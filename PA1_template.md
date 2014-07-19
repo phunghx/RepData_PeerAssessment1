@@ -1,0 +1,120 @@
+---
+output: word_document
+---
+# Reproducible Research: Peer Assessment 1
+## Name: Phung Xuan Huynh
+<h2> Occupation: Teaching Assistant at University of Technical Education Hochiminh City, Vietnam</h2>
+==============================================================================================
+
+
+## Loading and preprocessing the data
+```{r, echo=TRUE}
+#First, please set current directory working in your computer: setwd()
+activity <- read.csv("activity.csv")
+summary(activity)
+```
+## What is mean total number of steps taken per day?
+1. Preprocessing that return the steps counter, mean of step, median of step per day
+```{r, echo=TRUE}
+library(ggplot2)
+countSteps <- aggregate(steps ~ date, subset(activity, !is.na(steps)), sum)  
+```
+2. A histogram demonstrates the total number of steps taken each day
+```{r, echo=TRUE}
+qplot(data=countSteps,x=steps)
+```
+3. Calculate and report the mean and median total number of steps taken per day
+```{r, echo=TRUE}
+meanStep <- mean(countSteps$steps)
+medianStep <- median(countSteps$steps)
+meanStep
+medianStep
+```
+
+## What is the average daily activity pattern?
+1. Make time series plot
+```{r}
+intervalMean <- aggregate(steps ~ interval,subset(activity, !is.na(steps)), mean)
+
+plot(x = intervalMean$interval, y=intervalMean$steps, type="l",xlab="Interval"
+     ,main="The average number of steps taken per day",
+     ylab="Average step")
+```
+2. Maximum number of step that corresponsed with 5- interval
+```{r}
+maxStep <- max(intervalMean$steps)
+intervalMax <- subset(intervalMean, steps== maxStep)$interval
+plot(x = intervalMean$interval, y=intervalMean$steps, type="l",xlab="Interval"
+     ,main="The average number of steps taken per day",
+     ylab="Average step")
+abline(v=intervalMax)
+text(x=intervalMax,y= 0,paste("Max= ", intervalMax))
+```
+
+## Imputing missing values
+1. Total number of missing values in dataset
+```{r}
+dim(subset(activity, is.na(steps)))[1]
+```
+
+2. Impute the missing value by filling the average step of this 5 minute interval 
+```{r}
+activityImputed <- activity
+intervalMean <- aggregate(steps ~ interval,subset(activityImputed, !is.na(steps)), mean)
+n <- dim(activityImputed)[1]
+for (i in 1:n)  {
+  if (is.na(activity[i,1]))
+    activityImputed[i,1] <- subset(intervalMean,interval == activityImputed[i,3])[1,2]
+}
+```
+3. Procedure histogram that depicts the total number of steps taken each day; furthermore report new mean, and new median
+```{r}
+countStepsNew <- aggregate(steps ~ date, activityImputed, sum) 
+qplot(data=countStepsNew,x=steps)
+meanStepNew <- mean(countStepsNew$steps)
+medianStepNew <- median(countStepsNew$steps)
+meanStepNew
+medianStepNew
+```
+In conlusion, the new dataset that imputed shows histogram like the original as well as means are equal but new median is slightly greater than the previous
+
+## Are there differences in activity patterns between weekdays and weekends?
+1. Create new factor variable in datase. I assume that weekend is Sunday
+```{r}
+weekday <- c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday")
+#weekend <- c("Saturday","Sunday")
+#which(weekday == weekdays(as.Date(activityImputed[1,2])))
+#weekdays(as.Date(countStepsNew$date))
+activityImputed$day <- NULL
+
+n <- dim(activityImputed)[1]
+for (i in 1:n)  {
+  day <- which(weekday == weekdays(as.Date(activityImputed[i,2])))
+  #print(weekdays(as.Date(activityImputed[i,2])))
+  #print(day)
+  if (day <= 6) {
+    activityImputed[i,4] = ("weekday")
+  }
+  else{
+    activityImputed[i,4] = ("weekend")
+  }
+}
+
+activityImputed <-  transform(activityImputed, day = factor(V4))
+```
+2. Make the time series plot to compare the activity on weekday with weekend
+```{r}
+library(dplyr)
+weekday_group <- group_by(activityImputed, interval, day)
+activity_weekday <- summarise(weekday_group,
+                                 mean_steps = mean(steps),
+                                 n=n())
+
+qplot(data=activity_weekday ,y= mean_steps, x=interval,geom = "line",
+      main="The average number of steps taken at weekwend compared with weekday",
+      xlab="Interval",
+      ylab="The mean of steps") + 
+  facet_wrap(~day, ncol=1, nrow=2)
+```
+
+
